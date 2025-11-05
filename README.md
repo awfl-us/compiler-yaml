@@ -1,88 +1,119 @@
-compiler-yaml — Compile the AWFL DSL to Google Cloud Workflows YAML
+# compiler-yaml — AWFL DSL → Google Cloud Workflows YAML compiler
 
-Overview
-This library provides a compiler from the us.awfl.dsl workflow DSL to a data model that matches Google Cloud Workflows. You can then emit YAML (or JSON) for deployment using circe-yaml or other encoders.
+[![Scala 3.3.1](https://img.shields.io/badge/Scala-3.3.1-red.svg)](https://www.scala-lang.org/)
+[![sbt ≥ 1.9](https://img.shields.io/badge/sbt-%E2%89%A5%201.9-blue.svg)](https://www.scala-sbt.org/)
+[![Status: Snapshot](https://img.shields.io/badge/status-0.1.0--SNAPSHOT-orange.svg)](#status)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Key points
-- Language: Scala 3.3.1
-- Artifact name: compiler-yaml
-- Purpose: Turn a dsl.Workflow[_] into a serializable Workflow AST that mirrors Cloud Workflows constructs (call, return, for, switch, try/except, raise, assign, block, etc.).
-- Output: A case-class model (us.awfl.yaml.Workflow) that can be encoded to JSON/YAML via Circe.
+A small Scala 3 library that compiles workflows authored with `us.awfl.dsl` into a type-safe AST that mirrors Google Cloud Workflows. The resulting model can be encoded to YAML or JSON for deployment.
 
-Status
-- Version: 0.1.0-SNAPSHOT
-- Intended for use alongside the us.awfl:dsl library.
+---
 
-Getting started
-1) Add dependencies (sbt)
-- If you published locally (see Build locally below):
-  libraryDependencies ++= Seq(
-    "us.awfl" %% "compiler-yaml" % "0.1.0-SNAPSHOT",
-    // Only needed if you want to render YAML directly
-    "io.circe" %% "circe-yaml" % "0.14.2"
-  )
+## Table of contents
+- Overview
+- Features
+- Getting started
+  - Requirements
+  - Install
+  - Quick start
+- What gets generated
+- Conventions and defaults
+- Project structure
+- Building locally
+- Version and status
+- Contributing
+- License
 
-Note: compiler-yaml depends on us.awfl:dsl and will bring it in transitively when published. If you work from source, ensure the dsl module is available (e.g., published locally).
+---
 
-2) Compile a DSL workflow to YAML
-Assuming you already build a workflow with us.awfl.dsl:
+## Overview
+`compiler-yaml` turns a `dsl.Workflow[_]` (from `us.awfl:dsl`) into a serializable `us.awfl.yaml.Workflow` data model aligned with Cloud Workflows constructs (call, return, for, switch, try/except, raise, assign, block, …). You can then print YAML via `circe-yaml` or use the JSON form directly.
 
+## Features
+- Scala 3.3.1, idiomatic and type-safe
+- One-step compilation from AWFL DSL to a Cloud Workflows-compatible AST
+- Deterministic JSON/YAML encoding (works well with `circe-yaml`)
+- Sensible defaults for try/retry, parameterization, and step naming
+
+## Getting started
+
+### Requirements
+- JDK 17+
+- sbt 1.9+
+
+### Install
+If you published locally (see Building locally):
+
+```scala
+libraryDependencies ++= Seq(
+  "us.awfl" %% "compiler-yaml" % "0.1.0-SNAPSHOT",
+  // Only needed if you want to render YAML directly
+  "io.circe" %% "circe-yaml" % "0.14.2"
+)
+```
+
+Note: `compiler-yaml` depends on `us.awfl:dsl`. When working from source, ensure the DSL module is available (e.g., published locally).
+
+### Quick start
+```scala
 import us.awfl.dsl._
 import us.awfl.yaml
 import io.circe.syntax._
-
-// Optionally, to print YAML
 import io.circe.yaml.Printer
 
-// myWorkflow: dsl.Workflow[_] is constructed using the AWFL DSL in your app
+// Assume you have built a workflow with the AWFL DSL
+// val myWorkflow: dsl.Workflow[_] = ...
+
 val wfAst: yaml.Workflow = yaml.compile(myWorkflow)
 
-// Encode to JSON (for APIs or inspection)
+// JSON (for APIs or inspection)
 val json = wfAst.asJson
 
 // Pretty-print YAML for Cloud Workflows deployment
 val printer = Printer(preserveOrder = true, mappingStyle = Printer.FlowStyle.Block)
 val yamlString: String = printer.pretty(json)
 println(yamlString)
+```
 
-What the compiler generates
-- main.params: The compiled workflow has a single parameter named "input". Your DSL workflow should expect its input via this parameter.
-- Steps: DSL steps (Call, Return, For, ForRange, Fold, Switch, Try, Raise, Assign, Block) are mapped to the equivalent Cloud Workflows fields.
-- Unique step names: If duplicate step names occur, an incrementing suffix (_1, _2, …) is added to keep names unique across the entire workflow.
-- Try semantics: Calls are emitted within a try block and default to retry: http.default_retry (aligning with common Cloud Workflows retry semantics).
-- Constants mapping: Special DSL constants are replaced with Cloud-provided environment values:
-  - WORKFLOW_ID -> ${sys.get_env("GOOGLE_CLOUD_WORKFLOW_ID")}
-  - WORKFLOW_EXECUTION_ID -> ${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
-  - PROJECT_ID -> ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
-  - LOCATION -> ${sys.get_env("GOOGLE_CLOUD_LOCATION")}
+## What gets generated
+- Parameters: the compiled workflow exposes a single parameter named `input`. Your DSL workflow should expect input via this parameter.
+- Steps: DSL nodes (Call, Return, For, ForRange, Fold, Switch, Try, Raise, Assign, Block) map to equivalent Cloud Workflows fields.
+- Unique step names: duplicate step names are disambiguated with a numeric suffix (`_1`, `_2`, …) to ensure global uniqueness.
 
-Minimal example shape
-Below is the rough shape; the exact DSL construction happens in us.awfl.dsl. Once you have a dsl.Workflow[_], this library turns it into the YAML structure shown.
+## Conventions and defaults
+- Try/retry: outbound calls are wrapped in `try` with a default `retry: http.default_retry`. The DSL can override where supported.
+- Constants mapping: special DSL constants resolve to Cloud-provided values:
+  - `WORKFLOW_ID` → `${sys.get_env("GOOGLE_CLOUD_WORKFLOW_ID")}`
+  - `WORKFLOW_EXECUTION_ID` → `${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}`
+  - `PROJECT_ID` → `${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}`
+  - `LOCATION` → `${sys.get_env("GOOGLE_CLOUD_LOCATION")}`
+- YAML printing: when using `circe-yaml`, prefer a printer with `preserveOrder = true` for stable, readable output.
 
-// val myWorkflow: dsl.Workflow[_] = ... build using us.awfl.dsl ...
-val wfAst = us.awfl.yaml.compile(myWorkflow)
-val yamlStr = io.circe.yaml.Printer().pretty(wfAst.asJson)
+## Project structure
+- `build.sbt` — module definition (name: `compiler-yaml`, Scala 3.3.1)
+- `src/main/scala`
+  - `us.awfl.yaml.Compiler` — `compile(dsl.Workflow[_]) -> us.awfl.yaml.Workflow`
+  - `us.awfl.yaml.ValueEncoders` — encodes DSL values and CEL expressions
+  - `us.awfl.yaml.Workflow` — case-class model of Cloud Workflows YAML/JSON
+  - `us.awfl.yaml.Constants` — DSL constants → Cloud Workflows environment variables
 
-Building locally
-Requirements
-- JDK 17+
-- sbt 1.9+
+## Building locally
+Common tasks:
+- Compile: `sbt compile`
+- Package: `sbt package`
+- Publish locally: `sbt publishLocal`
 
-Commands
-- Compile: sbt compile
-- Package: sbt package
-- Publish locally (for use in other projects): sbt publishLocal
+After `publishLocal`, you can depend on this module from another sbt project:
+```scala
+libraryDependencies += "us.awfl" %% "compiler-yaml" % "0.1.0-SNAPSHOT"
+```
 
-After publishLocal, you should see artifacts under target/scala-3.3.1, and you can depend on this module from another sbt project via:
-  libraryDependencies += "us.awfl" %% "compiler-yaml" % "0.1.0-SNAPSHOT"
+## Version and status
+- Current version: `0.1.0-SNAPSHOT`
+- This module is intended for use alongside `us.awfl:dsl` and may evolve; follow semantic versioning for future releases.
 
-Project structure
-- build.sbt — module definition (name: compiler-yaml, Scala 3.3.1)
-- src/main/scala — sources (encoded in the published -sources jar)
-  - us.awfl.yaml.Compiler — compile(dsl.Workflow[_]) -> us.awfl.yaml.Workflow
-  - us.awfl.yaml.ValueEncoders — encodes DSL values and CEL expressions to JSON-compatible structures
-  - us.awfl.yaml.Workflow — case-class model of Cloud Workflows YAML/JSON
-  - us.awfl.yaml.Constants — maps DSL constants to Cloud Workflow environment variables
+## Contributing
+Contributions are welcome. Please keep changes small and focused, follow Scala 3 idioms, and maintain deterministic encoders. If changing behavior or public APIs, add/update docs and tests where applicable.
 
-License
-This project is open source under the LICENSE file in the repository.
+## License
+This project is open source under the MIT License. See [LICENSE](LICENSE) for details.
