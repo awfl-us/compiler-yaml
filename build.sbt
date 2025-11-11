@@ -1,23 +1,32 @@
 // build.sbt
 ThisBuild / scalaVersion := "3.3.1"
+ThisBuild / versionScheme := Some("early-semver")
+// If your tags are not prefixed with "v", uncomment the following line
+// ThisBuild / dynverTagPrefix := ""
+ThisBuild / organization := "us.awfl"
 
 name := "compiler-yaml"
-organization := "us.awfl"
-version := "0.1.0-SNAPSHOT"
 
-// Circe Core + Generic + Parser + YAML
-libraryDependencies ++= Seq(
-  "us.awfl" %% "dsl" % "0.1.0-SNAPSHOT",
-  // "io.circe" %% "circe-core"   % "0.14.7",
-  // "io.circe" %% "circe-generic"% "0.14.7",
-  // "io.circe" %% "circe-parser" % "0.14.7",
-  // "io.circe" %% "circe-yaml"   % "0.14.2",
-  // // Jackson Scala module (Scala 3 compatible)
-  // "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.2",
-  // // Victools JSON Schema generator + Jackson module (Java libs)
-  // "com.github.victools" %  "jsonschema-generator"       % "4.36.0",
-  // "com.github.victools" %  "jsonschema-module-jackson"  % "4.36.0"
+ThisBuild / description := "AWFL DSL to Google Cloud Workflows YAML/JSON compiler"
+ThisBuild / homepage := Some(url("https://github.com/awfl-us/compiler-yaml"))
+ThisBuild / licenses := List("MIT" -> url("https://opensource.org/licenses/MIT"))
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/awfl-us/compiler-yaml"),
+    "scm:git:https://github.com/awfl-us/compiler-yaml.git",
+    Some("scm:git:ssh://git@github.com/awfl-us/compiler-yaml.git")
+  )
 )
+ThisBuild / developers := List(
+  Developer(id = "awfl", name = "AWFL", email = "opensource@awfl.us", url = url("https://github.com/awfl-us"))
+)
+ThisBuild / pomIncludeRepository := { _ => false }
 
 publishMavenStyle := true
+
+// Dependencies
+libraryDependencies ++= Seq(
+  "us.awfl" %% "dsl" % "0.1.1",
+)
+
 scalacOptions ++= Seq("-deprecation", "-feature", "-language:implicitConversions")
