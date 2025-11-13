@@ -164,10 +164,8 @@ private def compileStep(step: Step[_, _], used: mutable.Set[String]): StepDefini
     import resultStep._
     import tryStep._
 
-    val errorName = s"${name}Error"
-
     val (steps, output) = run
-    val (exceptSteps, exceptOutput) = except(dsl.init(errorName))
+    val (exceptSteps, exceptOutput) = except
 
     val tryCompiled = compileSteps(used, steps)
     val tryExtras = ensureUniqueStepNames(used, List(updateValue(encode(output))))
@@ -179,7 +177,7 @@ private def compileStep(step: Step[_, _], used: mutable.Set[String]): StepDefini
 
     initValue(used, Json.obj(), yaml.TryStep(
       yaml.Try(tryBody),
-      Some(yaml.Except(errorName, exceptBody)),
+      Some(yaml.Except(encodeCel(error), exceptBody)),
       None
     ))
 
