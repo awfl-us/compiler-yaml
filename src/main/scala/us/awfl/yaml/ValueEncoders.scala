@@ -32,8 +32,10 @@ def encode(value: BaseValue[_]): EncodedValue = value match {
     case Some(value) => encode(obj(value))
     case None => ResolvedValue("null")
 
-    case opt: OptValue[_] =>
+    case opt: OptResolved[_] =>
       encode(opt.getOrElse(Value.nil(opt.spec)))
+    case OptObj(obj) =>
+      encode(obj)
     case opt: OptList[_] =>
       encode(opt.getOrElse(ListValue.nil(opt.spec)))
 
