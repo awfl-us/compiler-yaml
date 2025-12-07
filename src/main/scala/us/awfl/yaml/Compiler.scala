@@ -49,7 +49,7 @@ private def compileSteps(used: mutable.Set[String], steps: List[Step[_, _]]): Li
   ensureUniqueStepNames(used, compiled)
 }
 
-case class ResultStep(step: Step[_, _]) {
+case class ResultStep[T, V <: Resolved[T]](step: Step[T, V]) {
   import step._
 
   def initValue[T](used: mutable.Set[String], value: Json, stepWithUpdate: StepDefinition) = {
@@ -82,7 +82,7 @@ case class ResultStep(step: Step[_, _]) {
 }
 
 @tailrec
-private def compileStep(step: Step[_, _], used: mutable.Set[String]): StepDefinition = step match {
+private def compileStep[T, V <: BaseValue[T]](step: Step[T, V], used: mutable.Set[String]): StepDefinition = step match {
   case callStep: Call[_, _] => import callStep._
     val body = ensureUniqueStepNames(used, List(
       Map(s"${step.name}_call" -> CallStep(
@@ -130,7 +130,7 @@ private def compileStep(step: Step[_, _], used: mutable.Set[String]): StepDefini
       body
     )))
 
-  case fold: Fold[_, _] =>
+  case fold: Fold[T, _, _ <: Resolved[T]] => 
     val resultStep = ResultStep(fold)
     import resultStep._
     import fold._
@@ -147,7 +147,7 @@ private def compileStep(step: Step[_, _], used: mutable.Set[String]): StepDefini
       body
     )))
 
-  case switch: Switch[_, _] =>
+  case switch: Switch[T, _ <: Resolved[T]] =>
     val resultStep = ResultStep(switch)
     import resultStep._
     import switch._
@@ -159,7 +159,7 @@ private def compileStep(step: Step[_, _], used: mutable.Set[String]): StepDefini
       yaml.Case(ResolvedValue(encodeCel(cond)).ref, body)
     }))
 
-  case tryStep: Try[_, _] =>
+  case tryStep: Try[T, _ <: Resolved[T]] =>
     val resultStep = ResultStep(tryStep)
     import resultStep._
     import tryStep._
