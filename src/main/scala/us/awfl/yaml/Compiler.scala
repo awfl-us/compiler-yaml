@@ -189,4 +189,19 @@ private def compileStep[T, V <: BaseValue[T]](step: Step[T, V], used: mutable.Se
 
   case flatMap: FlatMap[_, _, _] =>
     compileStep(flatMap.step, used)
+
+  case parallel: Parallel =>
+    val shared = parallel.branches.map { branch => encode(branch.resultValue).cel }
+    val inner = List[Map[String, StepDefinition]](
+      Map(s"${parallel.name}_initResults" -> yaml.AssignStep(shared.map { v =>
+        Map(v -> Json.obj())
+      })),
+      Map(
+        s"${parallel.name}_run" -> yaml.ParallelStep(yaml.Parallel(
+          shared = shared,
+          branches = parallel.branches.map { branch => Map(s"${branch.name}Branch" -> BlockStep(compileSteps(used, List(branch)))) }
+        ))
+      ),
+    )
+    yaml.BlockStep(ensureUniqueStepNames(used, inner))
 }

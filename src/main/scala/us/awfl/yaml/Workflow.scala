@@ -25,6 +25,7 @@ object StepDefinition {
     case raise: RaiseStep => raise.asJson
     case assign: AssignStep => assign.asJson
     case block: BlockStep => block.asJson
+    case parallel: ParallelStep => parallel.asJson
   }
 }
 
@@ -39,21 +40,16 @@ case class ReturnStep(
 ) extends StepDefinition
 
 case class For(value: String, in: String, steps: List[Map[String, StepDefinition]])
-
 case class ForStep(`for`: For) extends StepDefinition
 
 case class ForRange(value: String, range: String, steps: List[Map[String, StepDefinition]])
-
 case class ForRangeStep(`for`: ForRange) extends StepDefinition
 
 case class Case(condition: String, steps: List[Map[String, StepDefinition]])
-
 case class SwitchStep(switch: List[Case]) extends StepDefinition
 
 case class Except(as: String, steps: List[Map[String, StepDefinition]])
-
 case class Try(steps: List[Map[String, StepDefinition]])
-
 case class TryStep(`try`: Try, except: Option[Except], retry: Option[String]) extends StepDefinition
 
 case class RaiseStep(raise: Json) extends StepDefinition
@@ -61,3 +57,6 @@ case class RaiseStep(raise: Json) extends StepDefinition
 case class AssignStep(assign: List[Map[String, Json]]) extends StepDefinition
 
 case class BlockStep(steps: List[Map[String, StepDefinition]]) extends StepDefinition
+
+case class Parallel(shared: List[String], branches: List[Map[String, BlockStep]])
+case class ParallelStep(parallel: Parallel) extends StepDefinition
