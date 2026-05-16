@@ -31,7 +31,7 @@ publishMavenStyle := true
 
 // Dependencies
 libraryDependencies ++= Seq(
-  "us.awfl" %% "dsl" % "0.2.0",
+  "us.awfl" %% "dsl" % "0.3.0",
 )
 
 // dependencyOverrides += "us.awfl" %% "dsl" % "0.1.0-SNAPSHOT"
