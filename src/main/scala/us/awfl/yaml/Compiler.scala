@@ -204,4 +204,24 @@ private def compileStep[T, V <: BaseValue[T]](step: Step[T, V], used: mutable.Se
       ),
     )
     yaml.BlockStep(ensureUniqueStepNames(used, inner))
+
+  case parallelFor: ParallelFor[?, ?] =>
+    val resultStep = ResultStep(parallelFor)
+    import resultStep._
+    import parallelFor._
+
+    val (steps, iterResult) = each
+
+    val compiled = compileSteps(used, steps)
+    val extras = ensureUniqueStepNames(used, concatNext(iterResult))
+    val body = compiled ++ extras
+
+    initValue(used, Json.arr(), yaml.ParallelForStep(yaml.ParallelFor(
+      shared = List(encodeCel(resultValue.cel)),
+      `for` = yaml.For(
+        encodeCel(item),
+        ResolvedValue(encodeCel(in.resolver.path)).ref,
+        body
+      ))
+    ))
 }

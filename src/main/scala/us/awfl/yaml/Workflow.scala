@@ -26,6 +26,7 @@ object StepDefinition {
     case assign: AssignStep => assign.asJson
     case block: BlockStep => block.asJson
     case parallel: ParallelStep => parallel.asJson
+    case parallelFor: ParallelForStep => parallelFor.asJson
   }
 }
 
@@ -60,3 +61,6 @@ case class BlockStep(steps: List[Map[String, StepDefinition]]) extends StepDefin
 
 case class Parallel(shared: List[String], branches: List[Map[String, BlockStep]])
 case class ParallelStep(parallel: Parallel) extends StepDefinition
+
+case class ParallelFor(shared: List[String], `for`: For)
+case class ParallelForStep(parallel: ParallelFor) extends StepDefinition
