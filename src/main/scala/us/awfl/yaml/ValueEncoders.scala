@@ -73,6 +73,15 @@ def encodeCel(cel: Cel): String = cel match {
   case CelValue(value) => encode(value).cel
   case CelOp(left, op, right) => s"(${encodeCel(left)} $op ${encodeCel(right)})"
   case CelFunc(name, params) => s"${name}(${params.map(encodeCel).mkString(", ")})"
+  case CelFunction(id, params) => s"${id.googleName}(${params.map(encodeCel).mkString(", ")})"
+  case CelGlobal(id) => s"sys.get_env(\"${id.googleEnvironmentVariable}\")"
+  case CelBinary(left, op, right) => s"(${encodeCel(left)} ${op.googleSymbol} ${encodeCel(right)})"
+  case CelUnary(op, operand) => s"(${op.googleSymbol} ${encodeCel(operand)})"
+  case CelList(elements) => elements.map(encodeCel).mkString("[", ", ", "]")
+  case CelString(content) => io.circe.Json.fromString(content).noSpaces
+  case CelInteger(value) => value.toString
+  case CelBoolean(value) => value.toString
+  case CelNull => "null"
   case CelAt(list, i) => s"${encodeCel(CelValue(list))}[${encodeCel(i)}]"
   case CelPath(path) => path.map(encodeCel).mkString(".")
 }

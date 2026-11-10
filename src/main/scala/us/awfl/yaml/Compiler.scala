@@ -93,6 +93,16 @@ private def compileStep[T, V <: BaseValue[T]](step: Step[T, V], used: mutable.Se
     ))
     TryStep(yaml.Try(body), None, Some(ResolvedValue("http.default_retry").ref))
 
+  case typedCall: TypedCall[_, _] => import typedCall._
+    val body = ensureUniqueStepNames(used, List(
+      Map(s"${step.name}_call" -> CallStep(
+        call = id.googleName,
+        args = encode(args).json,
+        result = encodeCel(resultValue.resolver.path)
+      ))
+    ))
+    TryStep(yaml.Try(body), None, Some(ResolvedValue("http.default_retry").ref))
+
   case returnStep: Return[_] =>
     ReturnStep(encode(returnStep.value).json)
 
