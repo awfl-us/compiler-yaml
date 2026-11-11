@@ -1,0 +1,30 @@
+name: Shared operation constants to Google Workflows YAML
+on:
+  push:
+    branches: [feat/native-rust-operation-ids]
+  pull_request:
+
+jobs:
+  google-yaml-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: awfl-us/dsl
+          ref: a05ea130be826a81094c0f0bfd0ac5faa79baa69
+          path: _dsl
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: sbt/setup-sbt@v1
+      - name: Publish original-shape DSL with operation constants
+        run: |
+          cd _dsl
+          sbt -batch 'set ThisBuild / version := "0.1.0-SNAPSHOT"' publishLocal 'Test / runMain us.awfl.dsl.OperationNamesSmoke'
+      - name: Test YAML name translation and old literal names
+        run: |
+          sbt -batch \
+            'set dependencyOverrides += "us.awfl" %% "dsl" % "0.1.0-SNAPSHOT"' \
+            'Test / runMain us.awfl.yaml.OperationNamesSmoke'
