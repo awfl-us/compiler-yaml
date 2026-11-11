@@ -6,32 +6,59 @@ import us.awfl.dsl.*
 object OperationNamesSmoke {
   def main(args: Array[String]): Unit = {
     val input = CelConst("1")
-    assert(encodeCel(CelFunc(CelFunctions.Length, input)) == "len(1)")
-    assert(encodeCel(CelFunc(CelFunctions.JsonEncodeString, input)) ==
-      "json.encode_to_string(1)")
-    assert(encodeCel(CelFunc(CelFunctions.TextLowercase, CelStr("UP"))) ==
-      "text.to_lower(\"UP\")")
-    assert(encodeCel(CelFunc("len", input)) == "len(1)")
-    assert(encodeCel(CelFunc("map.get", input, CelStr("key"))) ==
-      "map.get(1, \"key\")")
-    assert(encodeCel(CelFunc(CelFunctions.JsonEncodeBytes, input)) ==
-      "json.encode(1)")
+    val functionCases = List(
+      CelFunctions.Default -> "default",
+      CelFunctions.TypeOf -> "get_type",
+      CelFunctions.ToInt -> "int",
+      CelFunctions.ToString -> "string",
+      CelFunctions.Length -> "len",
+      CelFunctions.MapGet -> "map.get",
+      CelFunctions.MapMerge -> "map.merge",
+      CelFunctions.ListConcat -> "list.concat",
+      CelFunctions.JsonDecode -> "json.decode",
+      CelFunctions.JsonEncodeBytes -> "json.encode",
+      CelFunctions.JsonEncodeString -> "json.encode_to_string",
+      CelFunctions.Base64Encode -> "base64.encode",
+      CelFunctions.TextEncode -> "text.encode",
+      CelFunctions.TextDecode -> "text.decode",
+      CelFunctions.TextSplit -> "text.split",
+      CelFunctions.TextSubstring -> "text.substring",
+      CelFunctions.TextLowercase -> "text.to_lower",
+      CelFunctions.TextUrlEncode -> "text.url_encode",
+      CelFunctions.TimeFormat -> "time.format",
+      CelFunctions.UuidGenerate -> "uuid.generate",
+      CelFunctions.ClockNow -> "sys.now",
+      CelFunctions.EnvironmentGet -> "sys.get_env"
+    )
+    assert(functionCases.size == 22)
+    for ((semantic, google) <- functionCases) {
+      assert(encodeCel(CelFunc(semantic, input)) == s"$google(1)")
+      assert(encodeCel(CelFunc(google, input)) == s"$google(1)")
+    }
     assert(encodeCel(CelOp(CelConst("1"), "+", CelConst("2"))) == "(1 + 2)")
+    assert(encodeCel(CelOp(CelConst("not"), "", CelConst("true"))).contains("not"))
 
-    val request = Call[Map[String, String], String]("request",
-      CallOperations.WorkflowRun, obj(Map("workflow" -> "example")))
-    val compiled = compile(Workflow((List(request), request.resultValue)))
-    assert(compiled.toString.contains(
-      "googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run"))
-    assert(!compiled.toString.contains("workflow.run"))
-    // Google-specific call names retain their exact old spelling. Literal
-    // targets remain valid until existing workflows are migrated.
-    val legacy = Call[Map[String, String], String]("legacy",
-      "googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run",
-      obj(Map("workflow" -> "example")))
-    val legacyCompiled = compile(Workflow((List(legacy), legacy.resultValue)))
-    assert(legacyCompiled.toString.contains(
-      "googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run"))
+    val callCases = List(
+      CallOperations.HttpGet -> "http.get",
+      CallOperations.HttpPost -> "http.post",
+      CallOperations.HttpPatch -> "http.patch",
+      CallOperations.HttpDelete -> "http.delete",
+      CallOperations.LogWrite -> "sys.log",
+      CallOperations.CallbackCreate -> "events.create_callback_endpoint",
+      CallOperations.CallbackAwait -> "events.await_callback",
+      CallOperations.WorkflowRun -> "googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run",
+      CallOperations.StorageGet -> "googleapis.storage.v1.objects.get",
+      CallOperations.MessagingPublish -> "googleapis.pubsub.v1.projects.topics.publish"
+    )
+    assert(callCases.size == 10)
+    for ((semantic, google) <- callCases) {
+      val canonical = Call[Map[String, String], String]("request", semantic,
+        obj(Map("workflow" -> "example")))
+      val old = Call[Map[String, String], String]("request", google,
+        obj(Map("workflow" -> "example")))
+      assert(compile(Workflow((List(canonical), canonical.resultValue))) ==
+        compile(Workflow((List(old), old.resultValue))), s"mismatch: $semantic")
+    }
     println("Existing YAML call/CEL shapes render backend-neutral constants")
   }
 }
