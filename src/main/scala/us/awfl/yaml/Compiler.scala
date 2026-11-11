@@ -19,6 +19,22 @@ def compile(workflow: dsl.Workflow[_]) = {
   )
 }
 
+/** The DSL Call node is unchanged; only its backend-neutral name is mapped. */
+private def googleCallOperation(name: String): String = name match {
+  case CallOperations.HttpGet => "http.get"
+  case CallOperations.HttpPost => "http.post"
+  case CallOperations.HttpPatch => "http.patch"
+  case CallOperations.HttpDelete => "http.delete"
+  case CallOperations.LogWrite => "sys.log"
+  case CallOperations.CallbackCreate => "events.create_callback_endpoint"
+  case CallOperations.CallbackAwait => "events.await_callback"
+  case CallOperations.WorkflowRun =>
+    "googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run"
+  case CallOperations.StorageGet => "googleapis.storage.v1.objects.get"
+  case CallOperations.MessagingPublish => "googleapis.pubsub.v1.projects.topics.publish"
+  case other => other
+}
+
 // Ensure step names are globally unique across the entire workflow by appending _i to duplicates
 private def ensureUniqueStepNames(used: mutable.Set[String], steps: List[Map[String, StepDefinition]]): List[Map[String, StepDefinition]] = {
   steps.map { m =>
@@ -86,17 +102,7 @@ private def compileStep[T, V <: BaseValue[T]](step: Step[T, V], used: mutable.Se
   case callStep: Call[_, _] => import callStep._
     val body = ensureUniqueStepNames(used, List(
       Map(s"${step.name}_call" -> CallStep(
-        call = call,
-        args = encode(args).json,
-        result = encodeCel(resultValue.resolver.path)
-      ))
-    ))
-    TryStep(yaml.Try(body), None, Some(ResolvedValue("http.default_retry").ref))
-
-  case typedCall: TypedCall[_, _] => import typedCall._
-    val body = ensureUniqueStepNames(used, List(
-      Map(s"${step.name}_call" -> CallStep(
-        call = id.googleName,
+        call = googleCallOperation(call),
         args = encode(args).json,
         result = encodeCel(resultValue.resolver.path)
       ))

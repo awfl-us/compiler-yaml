@@ -18,6 +18,35 @@ case class ObjValue(json: Json) extends EncodedValue {
   val cel = json.toString // Doesn't work
 }
 
+/** Translate backend-neutral CEL function IDs to Google Workflows names.
+  * Existing literal Google names still compile while workflows migrate.
+  */
+def googleCelFunction(name: String): String = name match {
+  case CelFunctions.Default => "default"
+  case CelFunctions.TypeOf => "get_type"
+  case CelFunctions.ToInt => "int"
+  case CelFunctions.ToString => "string"
+  case CelFunctions.Length => "len"
+  case CelFunctions.MapGet => "map.get"
+  case CelFunctions.MapMerge => "map.merge"
+  case CelFunctions.ListConcat => "list.concat"
+  case CelFunctions.JsonDecode => "json.decode"
+  case CelFunctions.JsonEncodeBytes => "json.encode"
+  case CelFunctions.JsonEncodeString => "json.encode_to_string"
+  case CelFunctions.Base64Encode => "base64.encode"
+  case CelFunctions.TextEncode => "text.encode"
+  case CelFunctions.TextDecode => "text.decode"
+  case CelFunctions.TextSplit => "text.split"
+  case CelFunctions.TextSubstring => "text.substring"
+  case CelFunctions.TextLowercase => "text.to_lower"
+  case CelFunctions.TextUrlEncode => "text.url_encode"
+  case CelFunctions.TimeFormat => "time.format"
+  case CelFunctions.UuidGenerate => "uuid.generate"
+  case CelFunctions.ClockNow => "sys.now"
+  case CelFunctions.EnvironmentGet => "sys.get_env"
+  case other => other
+}
+
 // @tailrec
 def encode(value: BaseValue[_]): EncodedValue = value match {
   case resolved: Resolved[_] => ResolvedValue(encodeCel(Constants.replace(resolved).resolver.path))
@@ -72,16 +101,7 @@ def encodeCel(cel: Cel): String = cel match {
   case CelStr(content) => s"\"$content\""
   case CelValue(value) => encode(value).cel
   case CelOp(left, op, right) => s"(${encodeCel(left)} $op ${encodeCel(right)})"
-  case CelFunc(name, params) => s"${name}(${params.map(encodeCel).mkString(", ")})"
-  case CelFunction(id, params) => s"${id.googleName}(${params.map(encodeCel).mkString(", ")})"
-  case CelGlobal(id) => s"sys.get_env(\"${id.googleEnvironmentVariable}\")"
-  case CelBinary(left, op, right) => s"(${encodeCel(left)} ${op.googleSymbol} ${encodeCel(right)})"
-  case CelUnary(op, operand) => s"(${op.googleSymbol} ${encodeCel(operand)})"
-  case CelList(elements) => elements.map(encodeCel).mkString("[", ", ", "]")
-  case CelString(content) => io.circe.Json.fromString(content).noSpaces
-  case CelInteger(value) => value.toString
-  case CelBoolean(value) => value.toString
-  case CelNull => "null"
+  case CelFunc(name, params) => s"${googleCelFunction(name)}(${params.map(encodeCel).mkString(", ")})"
   case CelAt(list, i) => s"${encodeCel(CelValue(list))}[${encodeCel(i)}]"
   case CelPath(path) => path.map(encodeCel).mkString(".")
 }
