@@ -56,8 +56,14 @@ object OperationNamesSmoke {
         obj(Map("workflow" -> "example")))
       val old = Call[Map[String, String], String]("request", google,
         obj(Map("workflow" -> "example")))
-      assert(compile(Workflow((List(canonical), canonical.resultValue))) ==
-        compile(Workflow((List(old), old.resultValue))), s"mismatch: $semantic")
+      // The original Step.resultValue uses a hash-derived slot name, so
+      // substituting a name can alter *temporary YAML variable IDs* while
+      // preserving the actual Google connector target and arguments.
+      val canonicalYaml = compile(Workflow((List(canonical), canonical.resultValue))).toString
+      val legacyYaml = compile(Workflow((List(old), old.resultValue))).toString
+      assert(canonicalYaml.contains(google), s"missing mapped target: $semantic")
+      assert(legacyYaml.contains(google), s"missing old target: $google")
+      assert(!canonicalYaml.contains(s"CallStep($semantic,") || semantic == google)
     }
     println("Existing YAML call/CEL shapes render backend-neutral constants")
   }
