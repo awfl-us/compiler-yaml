@@ -34,6 +34,10 @@ A small Scala 3 library that compiles workflows authored with `us.awfl.dsl` into
 - One-step compilation from AWFL DSL to a Cloud Workflows-compatible AST
 - Deterministic JSON/YAML encoding (works well with `circe-yaml`)
 - Sensible defaults for try/retry, parameterization, and step naming
+- Resolve backend-neutral `CallOperations` connectors to Google names while
+  preserving existing literal Google connector names during migration.
+- Emit the standard CEL names verbatim: `time.now()` in the DSL becomes
+  `sys.now()` in Google Workflows; `map.get(...)` remains `map.get(...)`.
 
 ## Getting started
 
