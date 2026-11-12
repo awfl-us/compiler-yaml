@@ -51,6 +51,21 @@ private def ensureUniqueStepNames(used: mutable.Set[String], steps: List[Map[Str
   }
 }
 
+/** Translate only backend-neutral Call connector IDs to Google Workflows.
+  * Standard CEL names in CelFunc are already canonical and are never mapped.
+  * Legacy Google connector names remain usable until source migration ends.
+  */
+private[yaml] def googleCallName(call: String): String = call match {
+  case CallOperations.LogWrite => "sys.log"
+  case CallOperations.CallbackCreate => "events.create_callback_endpoint"
+  case CallOperations.CallbackAwait => "events.await_callback"
+  case CallOperations.WorkflowRun =>
+    "googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run"
+  case CallOperations.StorageGet => "googleapis.storage.v1.objects.get"
+  case CallOperations.MessagingPublish => "googleapis.pubsub.v1.projects.topics.publish"
+  case other => other // http.* are already Google-standard; keep old connectors
+}
+
 private def compileSteps(used: mutable.Set[String], steps: List[Step[_, _]]): List[Map[String, StepDefinition]] = {
   val compiled = steps.map(s => 
     try {
